@@ -1,6 +1,7 @@
 # dsh-rtk
 
 [![CI](https://github.com/viogus/dsh-rtk/actions/workflows/ci.yml/badge.svg)](https://github.com/viogus/dsh-rtk/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@viogus/dsh-rtk)](https://www.npmjs.com/package/@viogus/dsh-rtk)
 [![GitHub Release](https://img.shields.io/github/v/release/viogus/dsh-rtk)](https://github.com/viogus/dsh-rtk/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/viogus/dsh-rtk/blob/main/LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
@@ -19,9 +20,11 @@
 - [Why](#why)
 - [How it works](#how-it-works)
 - [Install & enable](#install--enable)
+- [Migrating from `@deeptrial/dsh-bash-rtk`](#migrating-from-deeptrialdsh-bash-rtk)
 - [API / Configuration](#api--configuration)
 - [Which commands are routed](#which-commands-are-routed)
 - [Development](#development)
+- [Changelog](#changelog)
 - [License](#license)
 
 ---
@@ -46,6 +49,7 @@ Everything else — workdir, timeout, env, exit code, sandbox confinement — is
 
 - **Node.js:** >= 20.0.0
 - **rtk:** `rtk --version` must exit 0 on PATH (install separately, e.g. `cargo install rtk`)
+- **Minimum rtk for the delegation design:** `0.25.0`, where `rtk rewrite` was introduced; everything in this README is verified against **`rtk 1.0.1`**, and CI re-runs that check on every push. There is no upper bound — see [Versioning note](#versioning-note).
 
 ## Why
 
@@ -133,6 +137,23 @@ dsh web   # restart to apply
 
 The bundled overlay snippet lives in [`cordis.patch.yml`](cordis.patch.yml). It swaps the stock sandbox executor for `RtkSandboxBashExecutor` (file confinement preserved) and leaves the unconfined `RtkBashExecutor` available for `danger-full-access` setups.
 
+## Migrating from `@deeptrial/dsh-bash-rtk`
+
+This repository is the **fork of [`DeepTrial/dsh-bash-rtk`](https://github.com/DeepTrial/dsh-bash-rtk) renamed to `dsh-rtk`**, rebuilt so that command coverage is delegated to `rtk` instead of a hand-maintained table. The old package is a different npm package (`@deeptrial/dsh-bash-rtk`, 0.1.x) and is **not** auto-updated by this one — switching is a manual, one-command change:
+
+```sh
+dsh plugin --profile web remove dsh-bash-rtk     # or the plugin id you registered
+dsh plugin --profile web add "@viogus/dsh-rtk"
+dsh web
+```
+
+What changes for you:
+
+- **Coverage stops drifting.** 0.1.x routed exactly 41 executables and had to be re-released when rtk learned a new one (there is a commit in the old history that adds `lit`/`make`, then removes them again while waiting for rtk). 0.2.0 asks `rtk rewrite`, so `ls`, `tree`, `head`, `oc`, `bun`, `ast-grep`, … work the day you upgrade rtk.
+- **The config field `rtkAvailable` keeps its meaning** (force the router on/off); one field was added, [`rtkRewrite`](#api--configuration).
+- **No other API change.** Both executors still extend the stock `LocalBashExecutor` / `SandboxBashExecutor`, so workdir, timeouts, output spills and sandbox confinement are untouched.
+- **The overlay id changed** from `bash-rtk` under the old package to the same `bash-rtk` id registered by this package — if you copied the `name:` line into your profile patch, update it to `@viogus/dsh-rtk`.
+
 ## API / Configuration
 
 Both executors accept the same base config as their stock counterparts (`LocalBashExecutor` / `SandboxBashExecutor`) plus two optional fields:
@@ -169,7 +190,7 @@ pnpm run test         # tests only
 pnpm run typecheck    # tsc only
 ```
 
-`devDependencies` use `link:` into the local `deepseek-harness` checkout; tests run inside that workspace (the `@deepseek-ai/dsh-*` packages must resolve).
+`devDependencies` use `link:` into the local `deepseek-harness` checkout; tests run inside that workspace (the `@deepseek-ai/dsh-*` packages must resolve). If you only need to work on the rewriting logic, the tests are self-sufficient once dependencies are installed — no harness build is needed to run `pnpm run test` after the first `pnpm install`.
 
 The unit tests use a stand-in `rtk` binary injected through `RTK_BIN`, so they need no real rtk. To additionally prove parity against the rtk you actually have installed:
 
@@ -177,7 +198,11 @@ The unit tests use a stand-in `rtk` binary injected through `RTK_BIN`, so they n
 pnpm run test:integration    # needs a real rtk on PATH (or RTK_INTEGRATION_BIN)
 ```
 
-That suite is skipped when no binary is supplied, so a plain `pnpm run test` stays green without rtk.
+That suite is skipped when no binary is supplied, so a plain `pnpm run test` stays green without rtk; `scripts/resolve-rtk.mjs` resolves the `PATH` name to an absolute path so the skip guard cannot silently mask a missing binary. CI runs both jobs on every push — a stubbed one for the contract and a `real-rtk` one that downloads the pinned rtk release.
+
+## Changelog
+
+Release notes live in [`CHANGELOG.md`](CHANGELOG.md) (Keep a Changelog format). The 0.2.0 entry documents the delegation rewrite, the fork/rename, the confinement regression that motivated the two-base-class design, and every manifest range that had to be widened.
 
 ## License
 

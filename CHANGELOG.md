@@ -1,0 +1,97 @@
+# Changelog
+
+All notable changes to this project are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
+this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+This repository is a **fork** of
+[`DeepTrial/dsh-bash-rtk`](https://github.com/DeepTrial/dsh-bash-rtk) renamed to
+`dsh-rtk`; the upstream 0.1.x history is preserved beneath the 0.2.0 entry.
+
+## [Unreleased]
+
+## [0.2.0] — 2026-10-15
+
+The delegation release: command coverage is no longer a list this plugin
+maintains, it is whatever the installed `rtk` says it is.
+
+### Added
+
+- **`rtk rewrite` delegation** (`src/rtk.ts`). `resolve()` now spawns
+  `rtk rewrite <command>` and adopts whatever the binary prints on stdout,
+  instead of consulting a static executable→subcommand table. New rtk rules and
+  new rtk command families therefore take effect by upgrading rtk alone, with no
+  plugin release (`ls`, `tree`, `read`, `diff`, `wc`, `oc`, `bun`, `ast-grep`,
+  `lint`, `prettier`, `format`, `ctest`, … all route). Rewrites are also
+  non-prefix where rtk says so — `head -20 foo.txt` becomes
+  `rtk read foo.txt --head-lines 20`.
+- **Rewrite cache** (`REWRITE_CACHE_MAX_ENTRIES = 1024`, FIFO eviction) so
+  repeated commands skip the ~11 ms subprocess.
+- **Cost filter** `isRoutableCandidate()` (`src/wrap.ts`): shell keywords and
+  everyday builtins (`cd`, `echo`, `pwd`, `export`, …) are skipped before
+  spawning. It is an optimization, not a policy — anything not provably
+  unroutable is handed to rtk.
+- **New config field `rtkRewrite`** (boolean, default `true`): keep the executor
+  registered but skip the rewrite entirely.
+- **Tunables**: `RTK_BIN` overrides the binary path, `RTK_TIMEOUT_MS` the
+  per-rewrite timeout (default 2000 ms; a timeout means "no rewrite").
+- **Test suites**: `tests/rtk.spec.ts` (unit, driven by a stand-in binary via
+  `RTK_BIN`), `tests/integration.rtk.spec.ts` (feature parity against a real
+  rtk binary via `RTK_INTEGRATION_BIN`), and `scripts/resolve-rtk.mjs` so
+  `pnpm run test:integration` accepts a plain `rtk` on PATH.
+- **CI `real-rtk` job**: downloads the pinned rtk release binary and runs the
+  integration suite against it, so the delegation claim is verified on every
+  push rather than asserted in prose.
+- **`release.yml`**: tagging `v*` builds, packs and attaches
+  `dsh-rtk-latest.tgz` to the GitHub release, which is what the README's
+  tarball install URL points at.
+
+### Changed
+
+- **Package renamed** `@deeptrial/dsh-bash-rtk` → `@viogus/dsh-rtk`
+  (repo `DeepTrial/dsh-bash-rtk` → `viogus/dsh-rtk`).
+- **Executors no longer share a base class.** `RtkBashExecutor extends
+  LocalBashExecutor` and `RtkSandboxBashExecutor extends SandboxBashExecutor`,
+  each carrying its own rewrite state. An intermediate refactor had both extend
+  one common class; that silently dropped `SandboxBashExecutor`'s
+  `sandboxPolicy` stamping, so the command ran **unconfined** and
+  `ctx.sandbox.confine` was never called. The small duplication is deliberate:
+  the base class decides confinement.
+- **rtk is probed with `rtk --version`** and the module must be imported as
+  `@deepseek-ai/cordis`, never bare `cordis` — the host packages augment the
+  scoped name.
+- **Peer ranges widened** to `>=0.0.1-rc.1 <0.3.0-0` for
+  `@deepseek-ai/dsh-bash-local`, `@deepseek-ai/dsh-bash-sandbox` and
+  `@deepseek-ai/dsh-shell`, plus `@deepseek-ai/cordis ~4.0.4`; all optional.
+  `dsh.plugin.json` engines is now `>=0.1.0-rc.6 <0.3.0-0`. The old three-way
+  prerelease OR chain excluded the installed 0.2.0-rc.2 host.
+- CI bumped to `actions/checkout@v5`, `pnpm/action-setup@v5`,
+  `actions/setup-node@v5`.
+- Exit codes from `rtk rewrite` are ignored on purpose: they encode rtk's
+  Claude Code permission protocol, which has no counterpart in `dsh`. Only
+  stdout is read, and empty stdout is the single "no rewrite" signal.
+
+### Fixed
+
+- Cache eviction ran *after* insertion, so the map could reach 1029 entries
+  against a 1024 bound; it now evicts first.
+- A stale comment claimed exit code 2 never prints to stdout. Upstream source
+  (`src/hooks/rewrite_cmd.rs`) and `rtk rewrite --help` both allow a
+  pipeline-rule message on 2; the implementation already handled it, the
+  comment did not.
+
+### Removed
+
+- The hand-maintained `RTK_COMMAND_MAP` (41 entries) and the metacharacter
+  bail-out that made every compound command pass through unwrapped. The legacy
+  pure `wrapWithRtk()` is still exported for existing consumers, now declining
+  `sudo` and leading `NAME=value` assignments explicitly.
+
+## [0.1.1] and earlier
+
+Upstream `DeepTrial/dsh-bash-rtk` history: static 41-executable whitelist in
+`src/wrap.ts`, no `rtk rewrite` delegation, no integration suite.
+
+[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/viogus/dsh-rtk/compare/v0.1.1...v0.2.0

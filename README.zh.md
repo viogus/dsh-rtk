@@ -1,6 +1,7 @@
 # dsh-rtk
 
 [![CI](https://github.com/viogus/dsh-rtk/actions/workflows/ci.yml/badge.svg)](https://github.com/viogus/dsh-rtk/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@viogus/dsh-rtk)](https://www.npmjs.com/package/@viogus/dsh-rtk)
 [![GitHub Release](https://img.shields.io/github/v/release/viogus/dsh-rtk)](https://github.com/viogus/dsh-rtk/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/viogus/dsh-rtk/blob/main/LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
@@ -19,9 +20,11 @@
 - [为什么需要它](#为什么需要它)
 - [工作原理](#工作原理)
 - [安装与启用](#安装与启用)
+- [从 `@deeptrial/dsh-bash-rtk` 迁移](#从-deeptrialdsh-bash-rtk-迁移)
 - [API / 配置](#api--配置)
 - [哪些命令会被路由](#哪些命令会被路由)
 - [开发](#开发)
+- [更新日志](#更新日志)
 - [许可证](#许可证)
 
 ---
@@ -46,6 +49,7 @@
 
 - **Node.js:** >= 20.0.0
 - **rtk:** `rtk --version` 在 PATH 上退出码为 0（需单独安装，例如 `cargo install rtk`）
+- **委托式设计所需的最低 rtk：** `0.25.0`（`rtk rewrite` 在该版本引入）；本说明的所有内容以 **`rtk 1.0.1`** 为验证基准，CI 每次推送都会重跑该验证。没有上界 —— 见[版本说明](#版本说明)。
 
 ## 为什么需要它
 
@@ -133,6 +137,23 @@ dsh web   # 重启以生效
 
 内置的 overlay 片段位于 [`cordis.patch.yml`](cordis.patch.yml)。它会用 `RtkSandboxBashExecutor`（保留文件隔离）替换原生的沙箱执行器，并保留非隔离的 `RtkBashExecutor` 供 `danger-full-access` 场景使用。
 
+## 从 `@deeptrial/dsh-bash-rtk` 迁移
+
+本仓库是 [`DeepTrial/dsh-bash-rtk`](https://github.com/DeepTrial/dsh-bash-rtk) 的 **fork，并更名为 `dsh-rtk`**，同时被改造成把命令覆盖面**委托给 `rtk`**，而不再维护手写映射表。旧包是另一个 npm 包（`@deeptrial/dsh-bash-rtk`，0.1.x），**不会**被本包自动更新 —— 切换是一次手动、单条命令的变更：
+
+```sh
+dsh plugin --profile web remove dsh-bash-rtk     # 或你注册时使用的插件 id
+dsh plugin --profile web add "@viogus/dsh-rtk"
+dsh web
+```
+
+对你而言，变化如下：
+
+- **覆盖面不再漂移。** 0.1.x 只路由固定的 41 个可执行文件，rtk 每学会一个新命令就得发一次版（旧仓库历史里还有一次提交先把 `lit`/`make` 加进白名单、后来又撤掉，等 rtk 合入）。0.2.0 直接询问 `rtk rewrite`，所以 `ls`、`tree`、`head`、`oc`、`bun`、`ast-grep` 等在你升级 rtk 的当天就能用。
+- **配置字段 `rtkAvailable` 含义不变**（强制开启/关闭路由）；新增了一个字段 [`rtkRewrite`](#api--配置)。
+- **其余 API 无变化。** 两个执行器仍然分别继承原生的 `LocalBashExecutor` / `SandboxBashExecutor`，因此工作目录、超时、输出落盘与沙箱隔离都未受影响。
+- **overlay 的 name 变了**：仍然是 `bash-rtk` 这个 id，但注册它的包从旧包换成了本包 —— 如果你曾把 `name:` 复制进自己的 profile patch，请改为 `@viogus/dsh-rtk`。
+
 ## API / 配置
 
 两个执行器均接受与其原生对应物（`LocalBashExecutor` / `SandboxBashExecutor`）相同的基础配置，外加两个可选字段：
@@ -169,7 +190,7 @@ pnpm run test         # 仅测试
 pnpm run typecheck    # 仅 tsc
 ```
 
-`devDependencies` 通过 `link:` 指向本地 `deepseek-harness` 源码仓；测试需在该 workspace 内运行（`@deepseek-ai/dsh-*` 包必须可解析）。
+`devDependencies` 通过 `link:` 指向本地 `deepseek-harness` 源码仓；测试需在该 workspace 内运行（`@deepseek-ai/dsh-*` 包必须可解析）。如果只改重写逻辑，依赖装好之后测试是自足的 —— 首次 `pnpm install` 之后无需再构建 harness 即可运行 `pnpm run test`。
 
 单元测试通过 `RTK_BIN` 注入一个替身 rtk 二进制，因此不依赖真实的 rtk。若还要针对你本机实际安装的 rtk 证明一致性：
 
@@ -177,7 +198,11 @@ pnpm run typecheck    # 仅 tsc
 pnpm run test:integration    # 需要 PATH 上有真实 rtk（或设置 RTK_INTEGRATION_BIN）
 ```
 
-未提供二进制时该套件会被跳过，因此普通的 `pnpm run test` 在没有 rtk 的环境中依然全绿。
+未提供二进制时该套件会被跳过，因此普通的 `pnpm run test` 在没有 rtk 的环境中依然全绿；`scripts/resolve-rtk.mjs` 会把 PATH 上的名字解析成绝对路径，避免跳过逻辑悄悄掩盖「二进制其实不存在」。CI 每次推送都会同时运行两个 job —— 用替身二进制的契约测试，以及下载固定版本 rtk 的 `real-rtk` 真实一致性测试。
+
+## 更新日志
+
+发布说明见 [`CHANGELOG.md`](CHANGELOG.md)（Keep a Changelog 格式）。0.2.0 条目记录了委托式重写、fork 与更名、促成「双基类」设计的沙箱隔离回归，以及所有被放宽的 manifest 版本范围。
 
 ## 许可证
 
