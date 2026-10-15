@@ -67,7 +67,12 @@ jobs:
           mv ./*.tgz dsh-rtk-latest.tgz
           tar -tzf dsh-rtk-latest.tgz | head -20
 
+      # `working-directory` is load-bearing: this step runs `gh`, which needs the
+      # plugin's git checkout. The job's default directory is the workspace root,
+      # which the sibling-checkout layout leaves outside any repository, so `gh`
+      # would abort with "fatal: not a git repository".
       - name: Attach tarball to the release
+        working-directory: dsh-rtk
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -77,4 +82,4 @@ jobs:
               --title "$GITHUB_REF_NAME" \
               --generate-notes
           fi
-          gh release upload "$GITHUB_REF_NAME" dsh-rtk/dsh-rtk-latest.tgz --clobber
+          gh release upload "$GITHUB_REF_NAME" dsh-rtk-latest.tgz --clobber
