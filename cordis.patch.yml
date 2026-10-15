@@ -1,4 +1,4 @@
-# dsh-bash-rtk optional overlay: routes eligible bash commands through rtk
+# dsh-rtk optional overlay: routes eligible bash commands through rtk
 # (Rust Token Killer) to compress tool output and save tokens.
 #
 # The inserted executor is DISABLED by default, so installing the plugin has no
@@ -18,7 +18,7 @@
 
 - insert:
     - id: bash-rtk
-      name: '@deeptrial/dsh-bash-rtk'
+      name: '@deeptrial/dsh-rtk'
       disabled: true
       config:
         timeoutMs: 60000

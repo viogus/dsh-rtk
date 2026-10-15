@@ -16,7 +16,7 @@ jobs:
       - name: Checkout plugin
         uses: actions/checkout@v4
         with:
-          path: dsh-bash-rtk
+          path: dsh-rtk
 
       # The plugin's devDependencies use `link:` into a local deepseek-harness
       # checkout (packages/shell/bash-local, vendor/cordis, ...). CI clones that
@@ -39,7 +39,7 @@ jobs:
         with:
           node-version: "22.19"
           cache: pnpm
-          cache-dependency-path: dsh-bash-rtk/pnpm-lock.yaml
+          cache-dependency-path: dsh-rtk/pnpm-lock.yaml
 
       - name: Install harness deps
         working-directory: deepseek-harness
@@ -53,9 +53,76 @@ jobs:
         run: pnpm build:lib:host
 
       - name: Install plugin deps
-        working-directory: dsh-bash-rtk
+        working-directory: dsh-rtk
         run: pnpm install --ignore-scripts
 
       - name: Typecheck + test + build
-        working-directory: dsh-bash-rtk
+        working-directory: dsh-rtk
         run: pnpm run check
+
+  # The check job above proves the plugin's contract with a stubbed rtk. This job
+  # proves the *delegation* claim — that coverage tracks a real rtk instead of a
+  # list we maintain — by downloading the actual release binary and driving
+  # tests/integration.rtk.spec.ts against it. It deliberately runs the OSS build,
+  # which is the variant a user can install without an rtk account; if OSS ever
+  # loses `rewrite`, this job is where that shows up.
+  real-rtk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin
+        uses: actions/checkout@v4
+        with:
+          path: dsh-rtk
+
+      - name: Checkout deepseek-harness (sibling)
+        uses: actions/checkout@v4
+        with:
+          repository: deepseek-ai/deepseek-harness
+          path: deepseek-harness
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.19"
+          cache: pnpm
+          cache-dependency-path: dsh-rtk/pnpm-lock.yaml
+
+      # Pin the rtk version so a red run means the plugin broke, not that upstream
+      # moved. Bump this deliberately when adopting a newer rtk.
+      - name: Download real rtk
+        env:
+          RTK_VERSION: "1.0.1"
+        run: |
+          set -euo pipefail
+          asset="rtk-oss-x86_64-unknown-linux-musl.tar.gz"
+          url="https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/${asset}"
+          curl -fsSL "$url" -o "$RUNNER_TEMP/$asset"
+          mkdir -p "$RUNNER_TEMP/rtk"
+          tar -xzf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP/rtk"
+          bin="$(find "$RUNNER_TEMP/rtk" -type f -name rtk | head -n1)"
+          test -n "$bin"
+          chmod +x "$bin"
+          echo "RTK_INTEGRATION_BIN=$bin" >> "$GITHUB_ENV"
+          "$bin" --version
+
+      - name: Install harness deps
+        working-directory: deepseek-harness
+        run: pnpm install
+
+      - name: Build harness host libs
+        working-directory: deepseek-harness
+        run: pnpm build:lib:host
+
+      - name: Install plugin deps
+        working-directory: dsh-rtk
+        run: pnpm install --ignore-scripts
+
+      - name: Feature parity against real rtk
+        working-directory: dsh-rtk
+        run: pnpm run test:integration

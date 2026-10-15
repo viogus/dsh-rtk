@@ -35,7 +35,7 @@ body:
   - type: input
     id: plugin
     attributes:
-      label: dsh-bash-rtk version
+      label: dsh-rtk version
       placeholder: e.g. 0.1.0
   - type: input
     id: rtk

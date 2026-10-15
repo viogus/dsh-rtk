@@ -1,8 +1,8 @@
-# dsh-bash-rtk
+# dsh-rtk
 
-[![CI](https://github.com/DeepTrial/dsh-bash-rtk/actions/workflows/ci.yml/badge.svg)](https://github.com/DeepTrial/dsh-bash-rtk/actions/workflows/ci.yml)
-[![GitHub Release](https://img.shields.io/github/v/release/DeepTrial/dsh-bash-rtk)](https://github.com/DeepTrial/dsh-bash-rtk/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/DeepTrial/dsh-bash-rtk/blob/main/LICENSE)
+[![CI](https://github.com/viogus/dsh-rtk/actions/workflows/ci.yml/badge.svg)](https://github.com/viogus/dsh-rtk/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/viogus/dsh-rtk)](https://github.com/viogus/dsh-rtk/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/viogus/dsh-rtk/blob/main/LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-339933?logo=nodedotjs)](https://nodejs.org/)
 
@@ -32,11 +32,13 @@ The plugin rewrites commands at the `resolve()` boundary — before anything run
 
 | Input (`command`) | Resolved output | Reason |
 |---|---|---|
-| `git status` | `rtk git status` | Simple + whitelisted |
-| `cargo build --release` | `rtk cargo build --release` | Simple + whitelisted |
-| `git status \| grep x` | `git status \| grep x` | Complex shell — **passthrough** |
-| `ls -la` | `ls -la` | Not whitelisted — **passthrough** |
-| `git status` (rtk absent) | `git status` | Binary missing — **identity fallback** |
+| `git status` | `rtk git status` | rtk has a rule |
+| `ls -la` | `rtk ls -la` | rtk routes `ls` too — no plugin list involved |
+| `tree` | `rtk tree` | new in rtk 1.0 — works with **no plugin release** |
+| `head -5 notes.txt` | `rtk read notes.txt --head-lines 5` | rtk's own non-prefix rewrite, adopted verbatim |
+| `git status \| grep x` | `rtk git status \| grep x` | rtk rewrites the segments it knows, leaves the rest |
+| `cd /tmp` | `cd /tmp` | rtk declines — **identity** |
+| `git status` (rtk absent) | `git status` | binary missing — **identity fallback** |
 
 Everything else — workdir, timeout, env, exit code, sandbox confinement — is inherited unchanged.
 
@@ -54,52 +56,56 @@ LLM agents burn tokens on verbose tool output (`git log`, `cargo build`, `pytest
 ```
 model → dsh bash tool → RtkBashExecutor.resolve()
                               │
+                              ▼
+                      rtk rewrite <command>
+                              │
               ┌───────────────┴────────────────┐
-         eligible?                         not eligible
-     (simple + whitelisted)           (complex / unknown)
+        prints a rewrite                  prints nothing
               │                                │
-      rtk <subcommand> …              command runs unchanged
-   (rtk compresses output)            (byte-for-byte passthrough)
+      run that command verbatim        run the original verbatim
 ```
 
-Three independent guards decide (see [`src/wrap.ts`](src/wrap.ts)):
+Two guards decide (see [`src/wrap.ts`](src/wrap.ts) and [`src/rtk.ts`](src/rtk.ts)):
 
-1. **Complexity** — any shell metacharacter (`| & ; < > \` $`) disqualifies the command. Wrapping those would silently alter what runs, so they pass through untouched.
-2. **Whitelist** — only known dev tools that `rtk` actually implements are eligible (map in `wrap.ts`).
-3. **Availability** — if the `rtk` binary is absent on `PATH`, the transform is the **identity**: the deployment behaves exactly like the stock local executor.
+1. **The mapping is rtk's, not ours.** `resolve()` spawns `rtk rewrite <command>` and adopts whatever it prints on stdout. The plugin keeps no table of commands: when rtk ships a new rule, upgrading rtk upgrades the plugin's coverage, and the plugin does not need a release. The exit code is ignored on purpose — rtk uses it for its own Claude Code permission protocol, which has no counterpart here.
+2. **A cheap cost filter, not a policy.** Shell keywords, `cd`, `echo`, `export`, … are skipped before spawning, because they are the commands an agent runs most and rtk declines them all. Anything not provably unroutable is handed to rtk to decide. If the `rtk` binary is absent the whole transform is the **identity**, so the deployment behaves exactly like the stock executor.
+
+Commands are *lexed* by rtk, not matched as whole strings: it rewrites the segments it recognizes and preserves pipes, `&&`/`;`, redirections and substitutions byte-for-byte. Compound commands are therefore routed, not skipped.
 
 ### Versioning note
 
-The plugin **does not bundle or pin rtk**. At `dsh` startup it probes `rtk --version` on `PATH` (see `resolveRtk()` in [`src/index.ts`](src/index.ts)). Therefore:
+The plugin **does not bundle or pin rtk**. At executor construction it probes `rtk --version` on `PATH` (see `probeRtkAvailable` in [`src/rtk.ts`](src/rtk.ts)) and then asks that same binary to do the rewriting. Therefore:
 
-- When **rtk ships a new release**, any user who upgrades `rtk` on their machine automatically gets the new behavior — no plugin update required.
+- When **rtk ships a new release**, any user who upgrades `rtk` on their machine automatically gets the new rules *and the new commands* — no plugin update required.
 - The plugin version (this repo) and the rtk version are **independent**; keep them separate. This README states the *minimum* rtk version tested against, not a lockstep number.
+- `RTK_BIN` overrides the binary path and `RTK_TIMEOUT_MS` the per-rewrite timeout (default 2000 ms); a rewrite that times out is treated as "no rewrite".
 
 > **Requires:** `rtk` on `PATH` (`rtk --version` exits 0). The plugin does **not** install or manage rtk — **you must install and update rtk yourself** (e.g. `cargo install rtk` or download a release binary). When rtk is absent the plugin is a silent no-op passthrough.
 
 ### Compatibility & version alignment
 
-This plugin depends on three `@deepseek-ai/dsh-*` packages that DeepSeek Harness publishes to npm **independently** from the `dsh` aggregate package. Because those sub-packages (and `dsh` itself) ship as **prereleases** (`x.y.z-rc.n`), the peer ranges must carry an explicit prerelease branch per [awesome-dsh-plugin/contributing.md](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md) — a broad-looking range like `>=0.0.1-rc.1 <0.2.0` would *silently* exclude every `0.1.0-*` / `0.1.1-*` prerelease (node-semver only lets a prerelease satisfy a range if some comparator shares its exact `major.minor.patch` tuple and also carries a prerelease tag).
+This plugin depends on `@deepseek-ai/dsh-*` packages that DeepSeek Harness publishes to npm **independently** from the `dsh` aggregate package. Because those sub-packages (and `dsh` itself) ship as **prereleases** (`x.y.z-rc.n`), the peer ranges must carry an explicit prerelease branch per [awesome-dsh-plugin/contributing.md](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md) — a broad-looking range like `>=0.0.1-rc.1 <0.3.0` would *silently* exclude every `0.2.0-*` prerelease (node-semver only lets a prerelease satisfy a range if some comparator shares its exact `major.minor.patch` tuple and also carries a prerelease tag), hence the `<0.3.0-0` upper bound.
 
 The actual ranges (see `peerDependencies` in `package.json`) are:
 
 ```
-"@deepseek-ai/dsh-bash-local":   ">=0.0.1-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.1.1 || >=0.1.1-rc.1 <0.2.0-0"
-"@deepseek-ai/dsh-bash-sandbox": ">=0.0.1-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.1.1 || >=0.1.1-rc.1 <0.2.0-0"
-"@deepseek-ai/dsh-shell":        ">=0.0.1-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.1.1 || >=0.1.1-rc.1 <0.2.0-0"
+"@deepseek-ai/cordis":           "~4.0.4"
+"@deepseek-ai/dsh-bash-local":   ">=0.0.1-rc.1 <0.3.0-0"
+"@deepseek-ai/dsh-bash-sandbox": ">=0.0.1-rc.1 <0.3.0-0"
+"@deepseek-ai/dsh-shell":        ">=0.0.1-rc.1 <0.3.0-0"
 ```
 
-`cordis` is **not** a peer dependency: it is injected by `dsh` at runtime, so declaring it would break install for anyone on a registry that lacks a matching published `cordis`. All three `@deepseek-ai/dsh-*` peers are marked `optional` in `peerDependenciesMeta`, so the plugin still loads where they are absent (it then behaves as a passthrough).
+All four peers are marked `optional` in `peerDependenciesMeta`, so the plugin still installs and loads where they are absent (it then behaves as a passthrough). Note the cordis entry: `dsh` injects the container at runtime, but it injects the **scoped** `@deepseek-ai/cordis`, which is the package this plugin imports for its `Context`/`Service` types. The unscoped npm name `cordis` is a *different, older* line (`4.0.0-rc.11`) and must not be used here.
 
 The plugin's `dsh.plugin.json` declares:
 
 ```json
-"engines": { "dsh": ">=0.1.0-rc.6 <0.2.0 || >=0.1.1-rc.1 <0.2.0-0" }
+"engines": { "dsh": ">=0.1.0-rc.6 <0.3.0-0" }
 ```
 
-i.e. it is verified against `dsh` `0.1.1-rc.2`, accepts any `0.1.x` prerelease/build, and deliberately **excludes** `0.2.0+` (a future major that may change the `LocalBashExecutor.resolve()` / `ShellExecSpec` API — a sub-package bump will be required before this plugin can track it).
+i.e. it is verified against `dsh` `0.2.0-rc.2` (whose `@deepseek-ai/dsh-*` sub-packages are likewise `0.2.0-rc.2`) and accepts any `0.1.x`/`0.2.x` prerelease.
 
-> **Known version skew:** `dsh` (the aggregate, what `npx @deepseek-ai/dsh` installs) and its `@deepseek-ai/dsh-*` sub-packages are on **separate semver tracks** — the aggregate can be `0.1.1-rc.2` while the published sub-packages are still `0.0.1-rc.1`. The ranges above pin to the *published* sub-package versions so a plain `dsh plugin add` resolves cleanly. Watch the [releases](https://github.com/DeepTrial/dsh-bash-rtk/releases) for a matching update.
+> **Known version skew:** `dsh` (the aggregate, what `npx @deepseek-ai/dsh` installs) and its `@deepseek-ai/dsh-*` sub-packages are on **separate semver tracks**. The ranges above pin to the *published* sub-package versions so a plain `dsh plugin add` resolves cleanly. Watch the [releases](https://github.com/viogus/dsh-rtk/releases) for a matching update.
 
 ## Install & enable
 
@@ -111,7 +117,7 @@ dsh plugin --profile web add "<path-to-this-dir>"
 
 # 2) or directly from the latest GitHub release tarball (no local clone needed)
 dsh plugin --profile web add \
-  "https://github.com/DeepTrial/dsh-bash-rtk/releases/latest/download/dsh-bash-rtk-latest.tgz"
+  "https://github.com/viogus/dsh-rtk/releases/latest/download/dsh-rtk-latest.tgz"
 
 # enable it via an optional overlay — add to your profile's cordis.patch.yml:
 #   - id: bash-sandbox
@@ -126,38 +132,49 @@ The bundled overlay snippet lives in [`cordis.patch.yml`](cordis.patch.yml). It 
 
 ## API / Configuration
 
-Both executors accept the same base config as their stock counterparts (`LocalBashExecutor` / `SandboxBashExecutor`) plus one optional field:
+Both executors accept the same base config as their stock counterparts (`LocalBashExecutor` / `SandboxBashExecutor`) plus two optional fields:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `rtkAvailable` | `boolean` | `resolveRtk()` result | Force-enable or force-disable rtk wrapping. Useful for tests or deployments where the binary path is non-standard. |
+| `rtkAvailable` | `boolean` | `probeRtkAvailable()` result | Force-enable or force-disable rtk routing. Useful for tests or deployments where the binary path is non-standard. |
+| `rtkRewrite` | `boolean` | `true` | Keep the executor registered but skip the `rtk rewrite` call, so `resolve()` is a plain passthrough. |
 
 All other options — `cwd`, `timeoutMs`, `graceMs`, etc. — are inherited unchanged from the upstream executors.
 
+`RtkSandboxBashExecutor` extends the stock `SandboxBashExecutor`, so confinement, its injection list and its result decoration are inherited rather than reimplemented; the rewrite happens in `resolve()` before `execute()` reads `spec.command`, which means the argv handed to `ctx.sandbox.confine` is already the rtk-routed one.
+
 ## Which commands are routed
 
-The set of commands eligible for rtk-wrapping is defined by **rtk itself** — see the [rtk command reference](https://github.com/rtk-ai/rtk#supported-ecosystems) / [`README.md`](https://github.com/rtk-ai/rtk/blob/develop/README.md#test-runners) for the authoritative, maintained list. This plugin mirrors that list; when rtk adds a new subcommand, upgrade rtk (not this plugin) to pick it up.
+Whatever the installed rtk routes. Run `rtk rewrite "<command>"` to ask it directly, or see the [rtk command reference](https://github.com/rtk-ai/rtk#supported-ecosystems) for the maintained list — the plugin does not mirror it. As a sample of the ground a hand-maintained list used to miss, rtk 1.0.1 already routes `ls`, `tree`, `head`, `read`, `diff`, `wc`, `grep`, `rg`, `ast-grep`, `oc`, `bun`, `bunx`, `lint`, `prettier`, `format` and `ctest` alongside the older dev-tool set.
 
-Complex commands — pipelines, `&&`/`;`, redirects, `$( )`, env assignments — always run natively regardless of the whitelist.
+Compound commands are routed too, because rtk rewrites segment by segment. The plugin only skips words it can prove rtk never rewrites (shell keywords and everyday builtins) to save a subprocess.
 
 ## Development
 
 ```sh
 # 1. clone the plugin and its sibling harness
-git clone https://github.com/DeepTrial/dsh-bash-rtk.git
+git clone https://github.com/viogus/dsh-rtk.git
 git clone https://github.com/deepseek-ai/deepseek-harness.git
 
 # 2. install harness deps and build the libraries the plugin links against
 cd deepseek-harness && pnpm install && pnpm build:lib:host
 
 # 3. install plugin deps and run checks
-cd ../dsh-bash-rtk && pnpm install --ignore-scripts
+cd ../dsh-rtk && pnpm install --ignore-scripts
 pnpm run check        # typecheck + test + build
 pnpm run test         # tests only
 pnpm run typecheck    # tsc only
 ```
 
 `devDependencies` use `link:` into the local `deepseek-harness` checkout; tests run inside that workspace (the `@deepseek-ai/dsh-*` packages must resolve).
+
+The unit tests use a stand-in `rtk` binary injected through `RTK_BIN`, so they need no real rtk. To additionally prove parity against the rtk you actually have installed:
+
+```sh
+pnpm run test:integration    # needs a real rtk on PATH (or RTK_INTEGRATION_BIN)
+```
+
+That suite is skipped when no binary is supplied, so a plain `pnpm run test` stays green without rtk.
 
 ## License
 

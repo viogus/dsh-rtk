@@ -21,7 +21,7 @@
 ## Environment
 
 - **Node.js version:**
-- **dsh-bash-rtk version:**
+- **dsh-rtk version:**
 - **rtk version:** (`rtk --version`)
 - **OS:**
 
