@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Forks do not run workflows on push until Actions is enabled on them, and a
+  # manual dispatch is the quickest way to prove the pipeline without pushing a
+  # throwaway commit.
+  workflow_dispatch:
 
 jobs:
   check:
