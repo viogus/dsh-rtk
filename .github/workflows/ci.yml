@@ -18,7 +18,7 @@ jobs:
       # deepseek-harness checkout — the plugin's `link:` devDependencies
       # resolve relative to the plugin package directory (../deepseek-harness).
       - name: Checkout plugin
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: dsh-rtk
 
@@ -27,7 +27,7 @@ jobs:
       # sibling so the link targets resolve, then builds the harness packages the
       # plugin needs (their `lib/` must exist for typecheck to find types).
       - name: Checkout deepseek-harness (sibling)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: deepseek-ai/deepseek-harness
           path: deepseek-harness
@@ -39,7 +39,7 @@ jobs:
           version: 11
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22.19"
           cache: pnpm
@@ -74,12 +74,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout plugin
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: dsh-rtk
 
       - name: Checkout deepseek-harness (sibling)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: deepseek-ai/deepseek-harness
           path: deepseek-harness
@@ -91,7 +91,7 @@ jobs:
           version: 11
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22.19"
           cache: pnpm
