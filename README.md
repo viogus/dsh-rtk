@@ -112,10 +112,13 @@ i.e. it is verified against `dsh` `0.2.0-rc.2` (whose `@deepseek-ai/dsh-*` sub-p
 The plugin is **disabled by default** — installing it does nothing until you opt in.
 
 ```sh
-# 1) from a local checkout
+# 1) from the npm registry (published as @viogus/dsh-rtk)
+dsh plugin --profile web add "@viogus/dsh-rtk"
+
+# 2) from a local checkout
 dsh plugin --profile web add "<path-to-this-dir>"
 
-# 2) or directly from the latest GitHub release tarball (no local clone needed)
+# 3) or directly from the latest GitHub release tarball (no local clone needed)
 dsh plugin --profile web add \
   "https://github.com/viogus/dsh-rtk/releases/latest/download/dsh-rtk-latest.tgz"
 

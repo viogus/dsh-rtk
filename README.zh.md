@@ -112,10 +112,13 @@ rtk 是**按词法切分**命令的，而不是整串匹配：它只重写自己
 插件**默认禁用** —— 安装后不会生效，需手动开启。
 
 ```sh
-# 1) 从本地 checkout 安装
+# 1) 从 npm registry 安装（已发布为 @viogus/dsh-rtk）
+dsh plugin --profile web add "@viogus/dsh-rtk"
+
+# 2) 从本地 checkout 安装
 dsh plugin --profile web add "<path-to-this-dir>"
 
-# 2) 或直接用最新 GitHub release tarball 安装（无需本地 clone）
+# 3) 或直接用最新 GitHub release tarball 安装（无需本地 clone）
 dsh plugin --profile web add \
   "https://github.com/viogus/dsh-rtk/releases/latest/download/dsh-rtk-latest.tgz"
 
