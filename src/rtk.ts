@@ -44,7 +44,7 @@
  *   rtk's tee directory. Commands that do not reference such a file write
  *   nothing.
  *
- * @module @deeptrial/dsh-rtk/rtk
+ * @module @viogus/dsh-rtk/rtk
  */
 
 import { spawnSync } from 'node:child_process'

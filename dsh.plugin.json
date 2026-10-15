@@ -1,5 +1,5 @@
 {
-  "id": "@deeptrial/dsh-rtk",
+  "id": "@viogus/dsh-rtk",
   "version": "0.2.0",
   "main": "./lib/index.js",
   "engines": {

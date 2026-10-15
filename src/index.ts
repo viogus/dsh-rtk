@@ -9,7 +9,7 @@
  * hand-maintained command list. A command rtk does not rewrite — or any command
  * at all, when the `rtk` binary is missing — passes through byte-for-byte.
  *
- * @module @deeptrial/dsh-rtk
+ * @module @viogus/dsh-rtk
  */
 
 import { Context } from '@deepseek-ai/cordis'

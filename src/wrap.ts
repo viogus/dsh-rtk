@@ -33,7 +33,7 @@
  * asks only "could the first word of this command name an executable rtk knows
  * about" — and it errs toward yes.
  *
- * @module @deeptrial/dsh-rtk/wrap
+ * @module @viogus/dsh-rtk/wrap
  */
 
 import { runRtkRewrite } from './rtk.ts'
