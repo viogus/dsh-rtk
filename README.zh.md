@@ -72,7 +72,7 @@ model → dsh bash 工具 → RtkBashExecutor.resolve()
 两道关卡决定路由（见 [`src/wrap.ts`](src/wrap.ts) 与 [`src/rtk.ts`](src/rtk.ts)）：
 
 1. **映射表属于 rtk，不属于本插件。** `resolve()` 会启动 `rtk rewrite <命令>` 并采纳它在 stdout 上打印的内容。插件不维护任何命令表：当 rtk 新增规则时，升级 rtk 就等于升级插件的覆盖面，插件本身无需发版。退出码被刻意忽略 —— rtk 用它表达自己面向 Claude Code 的权限协议，而这里没有对应物。
-2. **成本过滤器，而非策略。** shell 关键字与 `cd`、`echo`、`export` 等会在启动子进程之前被跳过，因为它们是 agent 最常执行、且 rtk 一律拒绝改写的命令。任何无法被证明「绝不被改写」的命令都会交给 rtk 判断。若 `PATH` 上找不到 `rtk` 二进制，整个变换就是**恒等**：部署行为与原始执行器完全一致。
+2. **成本过滤器，而非策略。** 命令会按顶层控制符（`&&`、`||`、`;`、`|`、`|&`、`&`、换行）切分，再逐段检查首词：shell 关键字与 `cd`、`echo`、`export` 等日常内建命令本身不构成可路由段。只有当**每一段**都是这类内建命令时，整条命令才会被跳过 —— `cd repo && cargo test` 会交给 rtk，并返回 `cd repo && rtk cargo test`。任何无法被证明「绝不被改写」的命令都会交给 rtk 判断。若 `PATH` 上找不到 `rtk` 二进制，整个变换就是**恒等**：部署行为与原始执行器完全一致。
 
 rtk 是**按词法切分**命令的，而不是整串匹配：它只重写自己认识的片段，管道、`&&`/`;`、重定向与命令替换都逐字节保留。因此复合命令会被路由，而不是被跳过。
 
@@ -113,7 +113,8 @@ rtk 是**按词法切分**命令的，而不是整串匹配：它只重写自己
 
 ## 安装与启用
 
-插件**默认禁用** —— 安装后不会生效，需手动开启。
+插件**默认禁用** —— 安装后不会生效，需手动
+开启。
 
 ```sh
 # 1) 从 npm registry 安装（已发布为 @viogus/dsh-rtk）
@@ -138,6 +139,10 @@ dsh web   # 重启以生效
 内置的 overlay 片段位于 [`cordis.patch.yml`](cordis.patch.yml)。它会用 `RtkSandboxBashExecutor`（保留文件隔离）替换原生的沙箱执行器，并保留非隔离的 `RtkBashExecutor` 供 `danger-full-access` 场景使用。
 
 ## 从 `@deeptrial/dsh-bash-rtk` 迁移
+
+
+> **不要同时安装本包与上游 `dsh-bash-rtk`。** 两者注册的是同一个 `ctx.shell` 服务，
+> 后加载的那个无法接管，最终由加载顺序决定谁生效。请先移除旧包 —— 下面的命令即按此顺序。
 
 本仓库是 [`DeepTrial/dsh-bash-rtk`](https://github.com/DeepTrial/dsh-bash-rtk) 的 **fork，并更名为 `dsh-rtk`**，同时被改造成把命令覆盖面**委托给 `rtk`**，而不再维护手写映射表。旧包是另一个 npm 包（`@deeptrial/dsh-bash-rtk`，0.1.x），**不会**被本包自动更新 —— 切换是一次手动、单条命令的变更：
 
@@ -171,7 +176,7 @@ dsh web
 
 取决于你所安装的 rtk 会路由什么。可直接运行 `rtk rewrite "<命令>"` 询问它，或见 [rtk 命令参考](https://github.com/rtk-ai/rtk#supported-ecosystems) 中持续维护的列表 —— 本插件并不镜像该列表。作为过去手写列表常常漏掉的范围示例，rtk 1.0.1 已经能路由 `ls`、`tree`、`head`、`read`、`diff`、`wc`、`grep`、`rg`、`ast-grep`、`oc`、`bun`、`bunx`、`lint`、`prettier`、`format`、`ctest`，以及更早的那批开发工具。
 
-复合命令同样会被路由，因为 rtk 是分段重写的。插件只跳过那些能被证明「rtk 永不改写」的词（shell 关键字与日常内建命令），以省下一次子进程开销。
+复合命令同样会被路由，因为 rtk 是分段重写的；过滤器现在检查每一段而非只看首词，所以 `cd repo && cargo test` 不会被误判成单纯的 `cd`。只有当一条命令的所有段都是「rtk 永不改写」的词（shell 关键字与日常内建命令）时才跳过，以省下一次子进程开销而不损失覆盖率。
 
 ## 开发
 

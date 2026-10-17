@@ -11,6 +11,13 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+### Docs
+
+- Describe the segment-aware filter (every segment is inspected, not just the
+  leading word) in both READMEs, and note that `dsh-rtk` and the upstream
+  `dsh-bash-rtk` must not be installed side by side: both register the same
+  `ctx.shell` service, so load order decides which one wins.
+
 ## [0.2.1] — 2026-10-17
 
 ### Fixed

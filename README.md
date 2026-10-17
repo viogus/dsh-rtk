@@ -72,7 +72,7 @@ model → dsh bash tool → RtkBashExecutor.resolve()
 Two guards decide (see [`src/wrap.ts`](src/wrap.ts) and [`src/rtk.ts`](src/rtk.ts)):
 
 1. **The mapping is rtk's, not ours.** `resolve()` spawns `rtk rewrite <command>` and adopts whatever it prints on stdout. The plugin keeps no table of commands: when rtk ships a new rule, upgrading rtk upgrades the plugin's coverage, and the plugin does not need a release. The exit code is ignored on purpose — rtk uses it for its own Claude Code permission protocol, which has no counterpart here.
-2. **A cheap cost filter, not a policy.** Shell keywords, `cd`, `echo`, `export`, … are skipped before spawning, because they are the commands an agent runs most and rtk declines them all. Anything not provably unroutable is handed to rtk to decide. If the `rtk` binary is absent the whole transform is the **identity**, so the deployment behaves exactly like the stock executor.
+2. **A cheap cost filter, not a policy.** The command is split on top-level control operators (`&&`, `||`, `;`, `|`, `|&`, `&`, newline) and each segment's first word is checked: shell keywords and everyday builtins (`cd`, `echo`, `export`, …) do not make a segment routable on their own. A command is skipped only when **every** segment is such a builtin — `cd repo && cargo test` is handed to rtk, and comes back as `cd repo && rtk cargo test`. Anything not provably unroutable is handed to rtk to decide. If the `rtk` binary is absent the whole transform is the **identity**, so the deployment behaves exactly like the stock executor.
 
 Commands are *lexed* by rtk, not matched as whole strings: it rewrites the segments it recognizes and preserves pipes, `&&`/`;`, redirections and substitutions byte-for-byte. Compound commands are therefore routed, not skipped.
 
@@ -141,6 +141,12 @@ The bundled overlay snippet lives in [`cordis.patch.yml`](cordis.patch.yml). It 
 
 This repository is the **fork of [`DeepTrial/dsh-bash-rtk`](https://github.com/DeepTrial/dsh-bash-rtk) renamed to `dsh-rtk`**, rebuilt so that command coverage is delegated to `rtk` instead of a hand-maintained table. The old package is a different npm package (`@deeptrial/dsh-bash-rtk`, 0.1.x) and is **not** auto-updated by this one — switching is a manual, one-command change:
 
+> **Do not install this package and the upstream `dsh-bash-rtk` side by side.** Both
+> register the same `ctx.shell` service, so the second one to load cannot take over
+> and the winner depends on load order. Remove the old package first — the commands
+> below do exactly that.
+
+
 ```sh
 dsh plugin --profile web remove dsh-bash-rtk     # or the plugin id you registered
 dsh plugin --profile web add "@viogus/dsh-rtk"
@@ -171,7 +177,7 @@ All other options — `cwd`, `timeoutMs`, `graceMs`, etc. — are inherited unch
 
 Whatever the installed rtk routes. Run `rtk rewrite "<command>"` to ask it directly, or see the [rtk command reference](https://github.com/rtk-ai/rtk#supported-ecosystems) for the maintained list — the plugin does not mirror it. As a sample of the ground a hand-maintained list used to miss, rtk 1.0.1 already routes `ls`, `tree`, `head`, `read`, `diff`, `wc`, `grep`, `rg`, `ast-grep`, `oc`, `bun`, `bunx`, `lint`, `prettier`, `format` and `ctest` alongside the older dev-tool set.
 
-Compound commands are routed too, because rtk rewrites segment by segment. The plugin only skips words it can prove rtk never rewrites (shell keywords and everyday builtins) to save a subprocess.
+Compound commands are routed too, because rtk rewrites segment by segment — and the filter now looks at every segment, not just the leading word, so `cd repo && cargo test` is not mistaken for a bare `cd`. The plugin skips a command only when all of its segments are words it can prove rtk never rewrites (shell keywords and everyday builtins), which saves a subprocess without losing coverage.
 
 ## Development
 
