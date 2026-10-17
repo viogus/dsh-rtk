@@ -11,6 +11,32 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-10-17
+
+### Fixed
+
+- **The cost filter only looked at a command's first word**, so `cd repo && cargo
+  test`, `echo done && git status` and every other compound command that opens
+  with a builtin was handed to the shell unwrapped. That is the shape an agent
+  writes most often, and rtk rewrites it fine (`cd repo && rtk cargo test`) — the
+  plugin was silently declining the whole command. `isRoutableCandidate` now
+  splits on top-level control operators (`&&`, `||`, `;`, `|`, `|&`, `&`, newline)
+  and accepts the command when *any* segment opens with a plausible executable.
+  Redirects are not split points, so `echo hi 2>&1` is still a passthrough rather
+  than a fabricated segment starting with `1`.
+- A command whose every segment is a builtin (`cd a; echo b`, `for …; do …; done`)
+  is still declined, so the cheap path stays cheap.
+
+### Changed
+
+- README (en/zh): the compatibility note no longer claims that a single peer
+  range silently excludes prereleases. `dsh-app-boot` evaluates `engines.dsh`
+  and dsh peer ranges with `includePrerelease: true`, so the shipped range
+  matches `0.1.x` and `0.2.x` prereleases alike (verified against `0.2.0-rc.2`
+  and `0.2.1-rc.1`); the `<0.3.0-0` bound is still the plain-node-semver-safe
+  spelling.
+
+
 ## [0.2.0] — 2026-10-15
 
 The delegation release: command coverage is no longer a list this plugin
@@ -93,5 +119,6 @@ maintains, it is whatever the installed `rtk` says it is.
 Upstream `DeepTrial/dsh-bash-rtk` history: static 41-executable whitelist in
 `src/wrap.ts`, no `rtk rewrite` delegation, no integration suite.
 
-[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/viogus/dsh-rtk/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/viogus/dsh-rtk/compare/v0.1.1...v0.2.0

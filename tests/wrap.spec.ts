@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wrapWithRtk } from '../src/wrap.ts'
+import { isRoutableCandidate, wrapWithRtk } from '../src/wrap.ts'
 
 describe('wrapWithRtk', () => {
   describe('rtk unavailable', () => {
@@ -82,6 +82,55 @@ describe('wrapWithRtk', () => {
     })
     it('preserves leading whitespace', () => {
       expect(wrapWithRtk('  git status', true)).toBe('rtk git status')
+    })
+  })
+})
+
+describe('isRoutableCandidate', () => {
+  describe('the leading word decides a single command', () => {
+    it('accepts a plausible executable', () => {
+      expect(isRoutableCandidate('ls -la')).toBe(true)
+      expect(isRoutableCandidate('tree')).toBe(true)
+      expect(isRoutableCandidate('FOO=bar git status')).toBe(true)
+    })
+    it('declines a bare builtin', () => {
+      expect(isRoutableCandidate('cd /tmp')).toBe(false)
+      expect(isRoutableCandidate('echo hi')).toBe(false)
+      expect(isRoutableCandidate('export A=1')).toBe(false)
+    })
+    it('declines an empty command', () => {
+      expect(isRoutableCandidate('')).toBe(false)
+      expect(isRoutableCandidate('   ')).toBe(false)
+    })
+  })
+
+  describe('every segment is considered, not just the leading one', () => {
+    // `cd repo && <tool>` is the shape an agent writes most often; rtk rewrites
+    // it to `cd repo && rtk <tool>`, so judging only `cd` would lose the rewrite.
+    it('accepts a routable segment behind cd', () => {
+      expect(isRoutableCandidate('cd /tmp && ls -la')).toBe(true)
+      expect(isRoutableCandidate('cd repo; cargo test')).toBe(true)
+      expect(isRoutableCandidate('cd repo && git status || echo failed')).toBe(true)
+    })
+    it('accepts a routable segment behind a pipeline stage', () => {
+      expect(isRoutableCandidate('ls -la | head -3')).toBe(true)
+      expect(isRoutableCandidate('echo hi | grep h')).toBe(true)
+    })
+    it('declines when every segment is a builtin', () => {
+      expect(isRoutableCandidate('cd a; echo b')).toBe(false)
+      expect(isRoutableCandidate('for f in *; do echo $f; done')).toBe(false)
+      expect(isRoutableCandidate('true && false')).toBe(false)
+    })
+  })
+
+  describe('redirects are not segment boundaries', () => {
+    it('does not fabricate a command out of an fd redirect', () => {
+      // `2>&1` must not split into `... 2>` + `1`, which would look routable.
+      expect(isRoutableCandidate('echo hi 2>&1')).toBe(false)
+      expect(isRoutableCandidate('echo hi &> out.txt')).toBe(false)
+    })
+    it('still accepts a routable command that carries a redirect', () => {
+      expect(isRoutableCandidate('ls -la 2>&1')).toBe(true)
     })
   })
 })

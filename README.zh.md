@@ -88,7 +88,7 @@ rtk 是**按词法切分**命令的，而不是整串匹配：它只重写自己
 
 ### 兼容性与版本对齐
 
-本插件依赖 `@deepseek-ai/dsh-*` 系列包，DeepSeek Harness 将它们与 `dsh` 聚合包**分开**发布到 npm。由于这些子包（以及 `dsh` 本身）都以**预发布**形式（`x.y.z-rc.n`）发布，peer 范围必须按 [awesome-dsh-plugin/contributing.md](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md) 带上显式的预发布分支 —— 像 `>=0.0.1-rc.1 <0.3.0` 这样"看起来很宽"的范围会*静默*排除所有 `0.2.0-*` 预发布（node-semver 只有当某比较符与候选版本同 `major.minor.patch` 元组且自身也带预发布标签时，才放行预发布版本），因此上界写成 `<0.3.0-0`。
+本插件依赖 `@deepseek-ai/dsh-*` 系列包，DeepSeek Harness 将它们与 `dsh` 聚合包**分开**发布到 npm。这些子包（以及 `dsh` 本身）都以**预发布**形式（`x.y.z-rc.n`）发布。在朴素的 node-semver 语义下，只有当某比较符与候选版本同 `major.minor.patch` 元组且自身也带预发布标签时，预发布版本才满足范围 —— 所以上界写成 `<0.3.0-0` 而不是 `<0.3.0`。运行时的 loader 比这更宽松：`dsh-app-boot` 用 `includePrerelease: true` 校验 `engines.dsh` 与插件的 dsh peer 范围，因此这一个范围即可匹配所有 `0.1.x`/`0.2.x` 预发布（已对 `0.2.0-rc.2` 与 `0.2.1-rc.1` 验证）。
 
 实际范围（见 `package.json` 的 `peerDependencies`）为：
 

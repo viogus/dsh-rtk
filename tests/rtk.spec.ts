@@ -152,6 +152,14 @@ describe('applyRtkRewrite', () => {
     expect(applyRtkRewrite('', new Map())).toBe('')
   })
 
+  it('probes a compound command whose leading word is a builtin', () => {
+    // The gate must not stop at `cd`; rtk rewrites the exploitable segment.
+    const { path, calls } = countingBin('apply-chain', 'x')
+    process.env['RTK_BIN'] = path
+    expect(applyRtkRewrite('cd /tmp && ls -la', new Map())).toContain('rtk')
+    expect(calls()).toBe(1)
+  })
+
   it('skips the probe entirely when the candidate filter declines', () => {
     const { path, calls } = countingBin('apply-gate', 'x')
     process.env['RTK_BIN'] = path

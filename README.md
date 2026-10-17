@@ -88,7 +88,7 @@ The plugin **does not bundle or pin rtk**. At executor construction it probes `r
 
 ### Compatibility & version alignment
 
-This plugin depends on `@deepseek-ai/dsh-*` packages that DeepSeek Harness publishes to npm **independently** from the `dsh` aggregate package. Because those sub-packages (and `dsh` itself) ship as **prereleases** (`x.y.z-rc.n`), the peer ranges must carry an explicit prerelease branch per [awesome-dsh-plugin/contributing.md](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md) — a broad-looking range like `>=0.0.1-rc.1 <0.3.0` would *silently* exclude every `0.2.0-*` prerelease (node-semver only lets a prerelease satisfy a range if some comparator shares its exact `major.minor.patch` tuple and also carries a prerelease tag), hence the `<0.3.0-0` upper bound.
+This plugin depends on `@deepseek-ai/dsh-*` packages that DeepSeek Harness publishes to npm **independently** from the `dsh` aggregate package. Those sub-packages (and `dsh` itself) ship as **prereleases** (`x.y.z-rc.n`). Under plain node-semver a prerelease only satisfies a range when some comparator shares its exact `major.minor.patch` tuple *and* carries a prerelease tag — which is why the upper bound is written `<0.3.0-0` rather than `<0.3.0`. The runtime loader is more permissive than that: `dsh-app-boot` evaluates `engines.dsh` and the plugin's dsh peer ranges with `includePrerelease: true`, so this single range matches every `0.1.x`/`0.2.x` prerelease (verified against `0.2.0-rc.2` and `0.2.1-rc.1`).
 
 The actual ranges (see `peerDependencies` in `package.json`) are:
 

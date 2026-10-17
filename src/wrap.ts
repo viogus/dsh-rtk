@@ -136,21 +136,69 @@ function shellWords(command: string): string[] {
 }
 
 /**
- * Cheap pre-filter: true when the command's first word could plausibly name an
- * executable rtk knows, so the probe is worth spending.
+ * Split a command into top-level segments at the shell's control operators —
+ * `&&`, `||`, `;`, `|`, `|&`, `&`, and newlines — honouring simple quoting.
  *
- * This intentionally over-accepts. A false positive costs one ~11 ms probe; a
- * false negative silently loses a token optimization. Anything not provably
- * unroutable is handed to rtk to decide.
- *
- * Process wrappers (`sudo`, `env`, `docker exec`, `uv run`, `poetry run`, …) are
- * *not* filtered: rtk peels them and may still rewrite the command underneath.
+ * Redirect operators are *not* split points: `2>&1` and `&>file` are part of
+ * the command they redirect, and splitting them would fabricate a segment that
+ * starts with a descriptor number. Only the command position after a real
+ * control operator opens a new segment, which is exactly the position rtk's own
+ * rewrite considers a command.
  *
  * @param command - raw shell source.
- * @returns true when `rtk rewrite` should be consulted.
+ * @returns trimmed, non-empty segments in source order.
  */
-export function isRoutableCandidate(command: string): boolean {
-  const words = shellWords(command)
+function commandSegments(command: string): string[] {
+  const segments: string[] = []
+  let current = ''
+  let quote: string | null = null
+  const flush = () => {
+    const trimmed = current.trim()
+    if (trimmed !== '') segments.push(trimmed)
+    current = ''
+  }
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command[index]
+    if (quote !== null) {
+      current += char
+      if (char === quote) quote = null
+      continue
+    }
+    if (char === '"' || char === "'") {
+      quote = char
+      current += char
+      continue
+    }
+    if (char === ';' || char === '\n') {
+      flush()
+      continue
+    }
+    if (char === '&') {
+      const previous = current.slice(-1)
+      if (previous === '>' || previous === '<' || command[index + 1] === '>') {
+        // `2>&1`, `<&0`, `&>file` — a redirect, not a separator.
+        current += char
+        continue
+      }
+      flush()
+      if (command[index + 1] === '&') index += 1
+      continue
+    }
+    if (char === '|') {
+      flush()
+      const next = command[index + 1]
+      if (next === '|' || next === '&') index += 1
+      continue
+    }
+    current += char
+  }
+  flush()
+  return segments
+}
+
+/** True when one segment opens with a word rtk could plausibly route. */
+function segmentIsRoutable(segment: string): boolean {
+  const words = shellWords(segment)
   if (words.length === 0) return false
   let index = 0
   while (index < words.length && ASSIGNMENT.test(words[index] ?? '')) index += 1
@@ -160,6 +208,31 @@ export function isRoutableCandidate(command: string): boolean {
   const lower = first.toLowerCase()
   if (SHELL_KEYWORDS.has(lower)) return false
   return !NON_ROUTABLE_EXACT.has(lower)
+}
+
+/**
+ * Cheap pre-filter: true when the command contains a command position whose
+ * word could plausibly name an executable rtk knows, so the probe is worth
+ * spending.
+ *
+ * This intentionally over-accepts. A false positive costs one ~11 ms probe; a
+ * false negative silently loses a token optimization. Anything not provably
+ * unroutable is handed to rtk to decide.
+ *
+ * Every segment is considered, not just the leading word. `cd repo && cargo
+ * test` is the shape an agent writes most often, and rtk rewrites it to
+ * `cd repo && rtk cargo test`; judging only the first word (`cd`) would skip the
+ * whole command. A segment whose first word is a builtin still does not make the
+ * command routable on its own — `cd /tmp` alone stays untouched.
+ *
+ * Process wrappers (`sudo`, `env`, `docker exec`, `uv run`, `poetry run`, …) are
+ * *not* filtered: rtk peels them and may still rewrite the command underneath.
+ *
+ * @param command - raw shell source.
+ * @returns true when `rtk rewrite` should be consulted.
+ */
+export function isRoutableCandidate(command: string): boolean {
+  return commandSegments(command).some(segmentIsRoutable)
 }
 
 /**
