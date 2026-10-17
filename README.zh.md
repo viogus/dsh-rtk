@@ -88,7 +88,7 @@ rtk 是**按词法切分**命令的，而不是整串匹配：它只重写自己
 
 ### 兼容性与版本对齐
 
-本插件依赖 `@deepseek-ai/dsh-*` 系列包，DeepSeek Harness 将它们与 `dsh` 聚合包**分开**发布到 npm。这些子包（以及 `dsh` 本身）都以**预发布**形式（`x.y.z-rc.n`）发布。在朴素的 node-semver 语义下，只有当某比较符与候选版本同 `major.minor.patch` 元组且自身也带预发布标签时，预发布版本才满足范围 —— 所以上界写成 `<0.3.0-0` 而不是 `<0.3.0`。运行时的 loader 比这更宽松：`dsh-app-boot` 用 `includePrerelease: true` 校验 `engines.dsh` 与插件的 dsh peer 范围，因此这一个范围即可匹配所有 `0.1.x`/`0.2.x` 预发布（已对 `0.2.0-rc.2` 与 `0.2.1-rc.1` 验证）。
+本插件依赖 `@deepseek-ai/dsh-*` 系列包，DeepSeek Harness 将它们与 `dsh` 聚合包**分开**发布到 npm。这些子包（以及 `dsh` 本身）都以**预发布**形式（`x.y.z-rc.n`）发布。在朴素的 node-semver 语义下，只有当某比较符与候选版本同 `major.minor.patch` 元组且自身也带预发布标签时，预发布版本才满足范围 —— 所以上界写成 `<0.3.0-0` 而不是 `<0.3.0`。运行时的 loader 比这更宽松：`dsh-app-boot` 用 `includePrerelease: true` 校验 `engines.dsh` 与插件的 dsh peer 范围，因此这些 peer 范围可匹配所有 `0.1.x`/`0.2.x` 预发布。但 peer 范围只是提示：真正决定 bundle 是否挂载的是下面写的 `engines.dsh` 门禁。
 
 实际范围（见 `package.json` 的 `peerDependencies`）为：
 
@@ -101,13 +101,28 @@ rtk 是**按词法切分**命令的，而不是整串匹配：它只重写自己
 
 四项 peer 都在 `peerDependenciesMeta` 中标记为 `optional`，因此在它们缺失时插件仍可安装并加载（此时退化为透传）。注意 cordis 一项：`dsh` 在运行时注入容器，但注入的是**带 scope** 的 `@deepseek-ai/cordis` —— 也正是本插件为获取 `Context`/`Service` 类型而 import 的包。npm 上不带 scope 的 `cordis` 是**另一条更旧的线**（`4.0.0-rc.11`），此处不可使用。
 
-本插件的 `dsh.plugin.json` 声明：
+本`package.json` 与 `dsh.plugin.json` 声明同一个目标范围：
 
 ```json
-"engines": { "dsh": ">=0.1.0-rc.6 <0.3.0-0" }
+"engines": { "dsh": ">=0.2.1-rc.1 <0.3.0-0" }
 ```
 
-即：以 `dsh` `0.2.0-rc.2`（其 `@deepseek-ai/dsh-*` 子包同为 `0.2.0-rc.2`）为验证基准，接受任意 `0.1.x`/`0.2.x` 预发布。
+`dsh.plugin.json` 另外带 `"dshTarget": "0.2.1-rc.1"`，即本版本实测过的运行时。范围同时写进
+`package.json` 是因为 `dsh-app-boot` 决定是否挂载 bundle 时读的是它；`dsh.plugin.json` 则是
+插件工具界面展示的那份。
+
+### 插件版本与 dsh 版本的对应关系
+
+插件的 **major.minor 跟随 `dsh` 的 major.minor**；patch 归插件自己，用于纯插件修复。
+`dsh` 开新 minor 线时插件跟着开新 minor（即使代码没变），这样配对关系一眼可见：
+
+| 插件版本 | dsh 目标范围 | 实测基准 |
+| --- | --- | --- |
+| `0.2.3` | `>=0.2.1-rc.1 <0.3.0-0` | `0.2.1-rc.1` |
+| `0.2.0` – `0.2.2` | `>=0.1.0-rc.6 <0.3.0-0` | `0.2.0-rc.2` |
+
+`0.2.3` 起**故意不再放行** `0.1.x` 与 `0.2.0-rc.2`：loader 会拒绝在旧核心上挂载，
+而不是挂上一个没验过的组合。仍停留在 `0.2.0-rc.2` 的话请锁 `0.2.2`。
 
 > **已知的版本错位：** `dsh`（聚合包，即 `npx @deepseek-ai/dsh` 安装的）与其 `@deepseek-ai/dsh-*` 子包处于**独立的 semver 轨道**。上述范围锁定到*已发布*的子包版本，因此普通 `dsh plugin add` 能干净解析。跟进匹配更新请关注 [releases](https://github.com/viogus/dsh-rtk/releases)。
 

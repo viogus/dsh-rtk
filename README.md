@@ -88,7 +88,7 @@ The plugin **does not bundle or pin rtk**. At executor construction it probes `r
 
 ### Compatibility & version alignment
 
-This plugin depends on `@deepseek-ai/dsh-*` packages that DeepSeek Harness publishes to npm **independently** from the `dsh` aggregate package. Those sub-packages (and `dsh` itself) ship as **prereleases** (`x.y.z-rc.n`). Under plain node-semver a prerelease only satisfies a range when some comparator shares its exact `major.minor.patch` tuple *and* carries a prerelease tag — which is why the upper bound is written `<0.3.0-0` rather than `<0.3.0`. The runtime loader is more permissive than that: `dsh-app-boot` evaluates `engines.dsh` and the plugin's dsh peer ranges with `includePrerelease: true`, so this single range matches every `0.1.x`/`0.2.x` prerelease (verified against `0.2.0-rc.2` and `0.2.1-rc.1`).
+This plugin depends on `@deepseek-ai/dsh-*` packages that DeepSeek Harness publishes to npm **independently** from the `dsh` aggregate package. Those sub-packages (and `dsh` itself) ship as **prereleases** (`x.y.z-rc.n`). Under plain node-semver a prerelease only satisfies a range when some comparator shares its exact `major.minor.patch` tuple *and* carries a prerelease tag — which is why the upper bound is written `<0.3.0-0` rather than `<0.3.0`. The runtime loader is more permissive than that: `dsh-app-boot` evaluates `engines.dsh` and the plugin's dsh peer ranges with `includePrerelease: true`, so these peer ranges match every `0.1.x`/`0.2.x` prerelease. Peer ranges are advisory, though: the `engines.dsh` gate documented below is what actually decides whether the bundle loads.
 
 The actual ranges (see `peerDependencies` in `package.json`) are:
 
@@ -101,13 +101,31 @@ The actual ranges (see `peerDependencies` in `package.json`) are:
 
 All four peers are marked `optional` in `peerDependenciesMeta`, so the plugin still installs and loads where they are absent (it then behaves as a passthrough). Note the cordis entry: `dsh` injects the container at runtime, but it injects the **scoped** `@deepseek-ai/cordis`, which is the package this plugin imports for its `Context`/`Service` types. The unscoped npm name `cordis` is a *different, older* line (`4.0.0-rc.11`) and must not be used here.
 
-The plugin's `dsh.plugin.json` declares:
+Both `package.json` and `dsh.plugin.json` declare the same target:
 
 ```json
-"engines": { "dsh": ">=0.1.0-rc.6 <0.3.0-0" }
+"engines": { "dsh": ">=0.2.1-rc.1 <0.3.0-0" }
 ```
 
-i.e. it is verified against `dsh` `0.2.0-rc.2` (whose `@deepseek-ai/dsh-*` sub-packages are likewise `0.2.0-rc.2`) and accepts any `0.1.x`/`0.2.x` prerelease.
+`dsh.plugin.json` also carries `"dshTarget": "0.2.1-rc.1"` — the exact runtime this
+release was verified against. `package.json` carries the range as well because
+that is the manifest `dsh-app-boot` reads when it decides whether to load a bundle;
+`dsh.plugin.json` is what the plugin tooling displays.
+
+### Which plugin version goes with which dsh
+
+The plugin's **major.minor follows `dsh`'s major.minor line**; the patch number is
+ours and moves for plugin-only fixes. New `dsh` line → new plugin minor, even if the
+plugin code did not change, so the pair is always obvious:
+
+| Plugin | dsh target range | Verified against |
+| --- | --- | --- |
+| `0.2.3` | `>=0.2.1-rc.1 <0.3.0-0` | `0.2.1-rc.1` |
+| `0.2.0` – `0.2.2` | `>=0.1.0-rc.6 <0.3.0-0` | `0.2.0-rc.2` |
+
+`0.2.3` deliberately **stops** admitting `0.1.x` and `0.2.0-rc.2`: the loader now
+refuses to mount the bundle on an older core instead of mounting something untested.
+Pin the plugin if you are still on `0.2.0-rc.2` (use `0.2.2`).
 
 > **Known version skew:** `dsh` (the aggregate, what `npx @deepseek-ai/dsh` installs) and its `@deepseek-ai/dsh-*` sub-packages are on **separate semver tracks**. The ranges above pin to the *published* sub-package versions so a plain `dsh plugin add` resolves cleanly. Watch the [releases](https://github.com/viogus/dsh-rtk/releases) for a matching update.
 

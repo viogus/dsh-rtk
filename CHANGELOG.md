@@ -11,6 +11,24 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-10-17
+
+### Changed
+
+- **Version alignment with `dsh`.** The plugin's major.minor now explicitly tracks
+  `dsh`'s major.minor line, and the target is declared instead of implied:
+  `engines.dsh` tightens to `>=0.2.1-rc.1 <0.3.0-0` and `dsh.plugin.json` gains
+  `"dshTarget": "0.2.1-rc.1"`. The range is duplicated in `package.json` because
+  that is the manifest `dsh-app-boot` reads when deciding whether to mount a bundle;
+  until now the gate lived only in `dsh.plugin.json`, which the loader never reads.
+  Both READMEs gain a plugin-version ↔ dsh-version table.
+
+### Breaking
+
+- `0.1.x` and `0.2.0-rc.2` are no longer admitted by the engine gate: the bundle is
+  skipped rather than mounted on a core this release was not verified against.
+  Pin `0.2.2` if you cannot move to `0.2.1-rc.1`.
+
 ## [0.2.2] — 2026-10-17
 
 ### Docs
@@ -128,7 +146,8 @@ maintains, it is whatever the installed `rtk` says it is.
 Upstream `DeepTrial/dsh-bash-rtk` history: static 41-executable whitelist in
 `src/wrap.ts`, no `rtk rewrite` delegation, no integration suite.
 
-[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/viogus/dsh-rtk/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/viogus/dsh-rtk/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/viogus/dsh-rtk/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/viogus/dsh-rtk/compare/v0.1.1...v0.2.0
