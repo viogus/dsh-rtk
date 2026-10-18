@@ -11,6 +11,16 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-10-18
+
+### Docs
+
+- Both READMEs now open with the sandbox caveat instead of burying it: compression
+  works in every mode, but a `workspace-write` session silently loses rtk's ledger,
+  the recall database and the `tee/` backups because those writes land outside the
+  writable roots. The notice names both remedies — the helper script, or a
+  `danger-full-access` session — and links the detailed section.
+
 ### Docs
 
 - Document the `workspace-write` limitation (rtk cannot write its state
@@ -153,7 +163,8 @@ maintains, it is whatever the installed `rtk` says it is.
 Upstream `DeepTrial/dsh-bash-rtk` history: static 41-executable whitelist in
 `src/wrap.ts`, no `rtk rewrite` delegation, no integration suite.
 
-[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/viogus/dsh-rtk/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/viogus/dsh-rtk/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/viogus/dsh-rtk/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/viogus/dsh-rtk/compare/v0.2.0...v0.2.1

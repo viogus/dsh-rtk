@@ -11,6 +11,15 @@
 
 [English version](README.md)
 
+> **提示：`workspace-write` 会话只有压缩，没有账本与备份。**
+> 改写本身在所有模式下都生效。问题出在隔离：dsh 只允许写工作区、`/tmp` 与平台临时目录，
+> 而 rtk 把 `history.db`、`recall.db` 与 `tee/` 放在 `~/Library/Application Support/rtk`
+> —— 不在可写范围内。这些写入会被**静默**拒绝，于是 `rtk gain` 始终为空、也不会留下
+> tee 备份。两种解法：运行
+> [`scripts/allow-rtk-state-in-sandbox.mjs`](scripts/allow-rtk-state-in-sandbox.mjs)
+> （`apply` 后重启 harness）只放开这一个目录；或把该会话切到 `danger-full-access`。
+> 详见[沙箱会话](#沙箱会话workspace-write)。
+
 ---
 
 ## 目录
@@ -22,6 +31,7 @@
 - [安装与启用](#安装与启用)
 - [从 `@deeptrial/dsh-bash-rtk` 迁移](#从-deeptrialdsh-bash-rtk-迁移)
 - [API / 配置](#api--配置)
+  - [沙箱会话](#沙箱会话workspace-write)
 - [哪些命令会被路由](#哪些命令会被路由)
 - [开发](#开发)
 - [更新日志](#更新日志)

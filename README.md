@@ -11,6 +11,17 @@
 
 [中文版](README.zh.md)
 
+> **Heads-up: a `workspace-write` session keeps the compression but loses the ledger and the backups.**
+> The rewrite works in every mode. Confinement is what bites: dsh allows writes only
+> inside the workspace, `/tmp` and the platform temp dir, while rtk keeps
+> `history.db`, `recall.db` and `tee/` in `~/Library/Application Support/rtk` — outside
+> those roots. rtk's writes are refused **silently**, so `rtk gain` stays empty and no
+> tee backup is kept. Two ways out: run
+> [`scripts/allow-rtk-state-in-sandbox.mjs`](scripts/allow-rtk-state-in-sandbox.mjs)
+> (`apply`, then restart the harness) to grant that one directory, or run the session
+> with `danger-full-access`. Full detail:
+> [Sandboxed sessions](#sandboxed-sessions-workspace-write).
+
 ---
 
 ## Table of Contents
@@ -22,6 +33,7 @@
 - [Install & enable](#install--enable)
 - [Migrating from `@deeptrial/dsh-bash-rtk`](#migrating-from-deeptrialdsh-bash-rtk)
 - [API / Configuration](#api--configuration)
+  - [Sandboxed sessions](#sandboxed-sessions-workspace-write)
 - [Which commands are routed](#which-commands-are-routed)
 - [Development](#development)
 - [Changelog](#changelog)
