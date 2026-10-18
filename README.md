@@ -197,6 +197,35 @@ Whatever the installed rtk routes. Run `rtk rewrite "<command>"` to ask it direc
 
 Compound commands are routed too, because rtk rewrites segment by segment — and the filter now looks at every segment, not just the leading word, so `cd repo && cargo test` is not mistaken for a bare `cd`. The plugin skips a command only when all of its segments are words it can prove rtk never rewrites (shell keywords and everyday builtins), which saves a subprocess without losing coverage.
 
+## Sandboxed sessions (`workspace-write`)
+
+Under `workspace-write`, dsh confines every shell command with Seatbelt: writes
+are denied except the workspace, `/tmp` and the platform temp dir. rtk keeps its
+state in `~/Library/Application Support/rtk` — outside those roots — so its
+writes are refused **silently**. Compression still works, but the savings
+ledger, the recall database and the `tee/` backups do not.
+
+Two ways to fix it:
+
+```sh
+# A) keep confinement, widen the grant for rtk's state dir only
+node scripts/allow-rtk-state-in-sandbox.mjs apply    # then restart the harness
+node scripts/allow-rtk-state-in-sandbox.mjs status    # after an app update
+node scripts/allow-rtk-state-in-sandbox.mjs revert    # undo
+
+# B) run the session with danger-full-access (no confinement, no patch)
+```
+
+The script patches one function in `@deepseek-ai/dsh-sandbox-local` (the
+Seatbelt profile builder), backs the file up next to itself, refuses to touch a
+shape it does not recognise, and finishes with a real `sandbox-exec` write test
+that must see a new row in `history.db`. It does **not** touch the in-process
+filesystem fence: `read` / `write` / `edit` stay confined to the workspace, only
+a shell command's write to rtk's own state directory is allowed.
+
+App updates can reinstall that package and drop the patch; `status` reports it
+and `apply` puts it back. Nothing here is required for compression to work.
+
 ## Development
 
 ```sh

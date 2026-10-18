@@ -193,6 +193,33 @@ dsh web
 
 复合命令同样会被路由，因为 rtk 是分段重写的；过滤器现在检查每一段而非只看首词，所以 `cd repo && cargo test` 不会被误判成单纯的 `cd`。只有当一条命令的所有段都是「rtk 永不改写」的词（shell 关键字与日常内建命令）时才跳过，以省下一次子进程开销而不损失覆盖率。
 
+## 沙箱会话（`workspace-write`）
+
+在 `workspace-write` 下，dsh 用 Seatbelt 约束每条 shell 命令：除工作区、`/tmp`
+与平台临时目录之外的写入一律拒绝。rtk 的状态目录在
+`~/Library/Application Support/rtk`，不在可写根内 —— 于是它的写入被**静默**拒绝。
+压缩照常工作，但节省账本、recall 数据库与 `tee/` 备份都不会产生。
+
+两种解法：
+
+```sh
+# A) 保留隔离，只给 rtk 状态目录开一条定向可写根
+node scripts/allow-rtk-state-in-sandbox.mjs apply    # 之后重启 harness
+node scripts/allow-rtk-state-in-sandbox.mjs status    # app 升级后检查
+node scripts/allow-rtk-state-in-sandbox.mjs revert    # 撤销
+
+# B) 把该会话切到 danger-full-access（不做隔离，也不需要打补丁）
+```
+
+脚本只改 `@deepseek-ai/dsh-sandbox-local` 里的一个函数（Seatbelt profile 构建），
+会就地备份原文件、遇到不认识的代码形状则拒绝改动，最后跑一次真实的
+`sandbox-exec` 写入测试（必须在 `history.db` 里看到新行）。它**不会**动进程内的
+文件围栏：`read` / `write` / `edit` 仍然被限制在工作区内，放开的只是 shell 命令
+对 rtk 自己状态目录的写入。
+
+app 升级可能重装该包并抹掉补丁；`status` 会发现，`apply` 可重新打上。压缩功能
+本身不依赖这里任何一步。
+
 ## 开发
 
 ```sh

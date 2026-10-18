@@ -11,6 +11,13 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+### Docs
+
+- Document the `workspace-write` limitation (rtk cannot write its state
+  directory, so the ledger/recall/tee writes fail silently) and ship
+  `scripts/allow-rtk-state-in-sandbox.mjs` to grant that one directory inside the
+  Seatbelt profile, with `status` / `apply` / `revert` and a real write test.
+
 ## [0.2.3] — 2026-10-17
 
 ### Changed
