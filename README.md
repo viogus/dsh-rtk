@@ -33,8 +33,9 @@
 - [Install & enable](#install--enable)
 - [Migrating from `@deeptrial/dsh-bash-rtk`](#migrating-from-deeptrialdsh-bash-rtk)
 - [API / Configuration](#api--configuration)
-  - [Sandboxed sessions](#sandboxed-sessions-workspace-write)
 - [Which commands are routed](#which-commands-are-routed)
+- [Sandboxed sessions](#sandboxed-sessions-workspace-write)
+- [Comparing token-saving plugins](#comparing-token-saving-plugins)
 - [Development](#development)
 - [Changelog](#changelog)
 - [License](#license)
@@ -238,9 +239,11 @@ a shell command's write to rtk's own state directory is allowed.
 App updates can reinstall that package and drop the patch; `status` reports it
 and `apply` puts it back. Nothing here is required for compression to work.
 
-> A Chinese-language, measured comparison with `dsh-token-saver` and `dsh-ops`
-> (same tasks, isolated profiles) lives in
-> [docs/token-saving-plugins.zh.md](docs/token-saving-plugins.zh.md).
+## Comparing token-saving plugins
+
+A Chinese-language, measured comparison with `dsh-token-saver` and `dsh-ops` on
+the same tasks in isolated profiles — numbers, failure modes and reproduction
+steps — lives in [docs/token-saving-plugins.zh.md](docs/token-saving-plugins.zh.md).
 
 ## Development
 
