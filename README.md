@@ -238,6 +238,10 @@ a shell command's write to rtk's own state directory is allowed.
 App updates can reinstall that package and drop the patch; `status` reports it
 and `apply` puts it back. Nothing here is required for compression to work.
 
+> A Chinese-language, measured comparison with `dsh-token-saver` and `dsh-ops`
+> (same tasks, isolated profiles) lives in
+> [docs/token-saving-plugins.zh.md](docs/token-saving-plugins.zh.md).
+
 ## Development
 
 ```sh

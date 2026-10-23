@@ -32,6 +32,7 @@
 - [从 `@deeptrial/dsh-bash-rtk` 迁移](#从-deeptrialdsh-bash-rtk-迁移)
 - [API / 配置](#api--配置)
   - [沙箱会话](#沙箱会话workspace-write)
+  - [与其他省 token 插件的实测对比](#与其他省-token-插件的实测对比)
 - [哪些命令会被路由](#哪些命令会被路由)
 - [开发](#开发)
 - [更新日志](#更新日志)
@@ -229,6 +230,11 @@ node scripts/allow-rtk-state-in-sandbox.mjs revert    # 撤销
 
 app 升级可能重装该包并抹掉补丁；`status` 会发现，`apply` 可重新打上。压缩功能
 本身不依赖这里任何一步。
+
+## 与其他省 token 插件的实测对比
+
+同一批任务上，`dsh-rtk`、`dsh-token-saver` 1.0.4 与 `dsh-ops` 0.4.1 的会话总 token 对比、
+各自失效场景与复现方法，见 [docs/token-saving-plugins.zh.md](docs/token-saving-plugins.zh.md)。
 
 ## 开发
 

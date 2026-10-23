@@ -11,6 +11,13 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+### Docs
+
+- Add `docs/token-saving-plugins.zh.md`: a measured comparison of dsh-rtk,
+  `dsh-token-saver` and `dsh-ops` on the same tasks, with method, numbers,
+  failure modes and reproduction steps. Ship `docs/` in the npm package so the
+  README link resolves there too.
+
 ## [0.2.4] — 2026-10-18
 
 ### Docs
