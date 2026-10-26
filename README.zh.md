@@ -60,7 +60,7 @@
 
 - **Node.js:** >= 20.0.0
 - **rtk:** `rtk --version` 在 PATH 上退出码为 0（需单独安装，例如 `cargo install rtk`）
-- **委托式设计所需的最低 rtk：** `0.25.0`（`rtk rewrite` 在该版本引入）；本说明的所有内容以 **`rtk 1.0.1`** 为验证基准，CI 每次推送都会重跑该验证。没有上界 —— 见[版本说明](#版本说明)。
+- **委托式设计所需的最低 rtk：** `0.25.0`（`rtk rewrite` 在该版本引入）；本说明的所有内容以 **`rtk 1.1.0`** 为验证基准，CI 每次推送都会重跑该验证。没有上界 —— 见[版本说明](#版本说明)。
 
 ## 为什么需要它
 
@@ -200,7 +200,7 @@ dsh web
 
 ## 哪些命令会被路由
 
-取决于你所安装的 rtk 会路由什么。可直接运行 `rtk rewrite "<命令>"` 询问它，或见 [rtk 命令参考](https://github.com/rtk-ai/rtk#supported-ecosystems) 中持续维护的列表 —— 本插件并不镜像该列表。作为过去手写列表常常漏掉的范围示例，rtk 1.0.1 已经能路由 `ls`、`tree`、`head`、`read`、`diff`、`wc`、`grep`、`rg`、`ast-grep`、`oc`、`bun`、`bunx`、`lint`、`prettier`、`format`、`ctest`，以及更早的那批开发工具。
+取决于你所安装的 rtk 会路由什么。可直接运行 `rtk rewrite "<命令>"` 询问它，或见 [rtk 命令参考](https://github.com/rtk-ai/rtk#supported-ecosystems) 中持续维护的列表 —— 本插件并不镜像该列表。作为过去手写列表常常漏掉的范围示例，rtk 1.1.0 已经能路由 `ls`、`tree`、`head`、`read`、`diff`、`wc`、`grep`、`rg`、`ast-grep`、`oc`、`bun`、`bunx`、`lint`、`prettier`、`format`、`ctest`，以及更早的那批开发工具。
 
 复合命令同样会被路由，因为 rtk 是分段重写的；过滤器现在检查每一段而非只看首词，所以 `cd repo && cargo test` 不会被误判成单纯的 `cd`。只有当一条命令的所有段都是「rtk 永不改写」的词（shell 关键字与日常内建命令）时才跳过，以省下一次子进程开销而不损失覆盖率。
 

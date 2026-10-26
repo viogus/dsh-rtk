@@ -30,7 +30,7 @@
  * ## Cost
  *
  * One `spawnSync` per not-yet-seen command, measured at ~11 ms on macOS arm64
- * for rtk 1.0.1. Results are memoized per executor instance by exact command
+ * for rtk 1.1.0. Results are memoized per executor instance by exact command
  * text, so a command that repeats costs nothing after the first call.
  *
  * ## What `rtk rewrite` touches besides stdout

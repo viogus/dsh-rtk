@@ -67,7 +67,7 @@ const SHELL_KEYWORDS: ReadonlySet<string> = new Set([
  * Shell builtins and everyday inspection commands that rtk has no rule for.
  *
  * This is a cost filter, not a policy: every entry was verified against rtk
- * 1.0.1 to be declined by `rtk rewrite` both bare and with arguments, so
+ * 1.1.0 to be declined by `rtk rewrite` both bare and with arguments, so
  * nothing here can suppress a rewrite. It earns its place because these are the
  * commands an agent runs most often, and each one skipped is one subprocess not
  * spent.
@@ -78,7 +78,7 @@ const SHELL_KEYWORDS: ReadonlySet<string> = new Set([
  * `nice` are peeled the same way. Filtering any of them would lose a real
  * rewrite.
  */
-const NON_ROUTABLE_EXACT: ReadonlySet<string> = new Set([
+export const NON_ROUTABLE_EXACT: ReadonlySet<string> = new Set([
   'cd',
   'echo',
   'pwd',

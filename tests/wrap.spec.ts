@@ -31,7 +31,7 @@ describe('wrapWithRtk', () => {
 
   describe('the gate errs toward yes', () => {
     it('accepts a command the old 41-entry whitelist would have missed', () => {
-      // `tree`, `oc` and `head` are all routed by rtk 1.0.1 and none was ever on
+      // `tree`, `oc` and `head` are all routed by rtk 1.1.0 and none was ever on
       // the removed `RTK_COMMAND_MAP`. That drift — a hand list chasing rtk's
       // own mapping — is why the executor asks rtk via `rtk rewrite` now, and
       // why the surviving gate is a denylist of provably-unroutable words

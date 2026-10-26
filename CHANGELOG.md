@@ -11,6 +11,21 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+### Changed
+
+- **rtk 1.1.0.** Re-ran the real-binary suite against it: `rtk rewrite`'s exit
+  codes and output shape, `RTK_DB_PATH`, and the `~/Library/Application Support/rtk`
+  state directory are all unchanged, so the plugin, the lifecycle script and the
+  sandbox grant need no code change. The CI pin and the "verified against" claim
+  move from `1.0.1` to `1.1.0`.
+
+### Tests
+
+- Export `NON_ROUTABLE_EXACT` and check every filtered word against the real
+  binary, bare and with an argument. The cost filter's justification is that rtk
+  never rewrites those words anyway; if a release taught rtk one of them, the
+  filter would silently suppress a real rewrite.
+
 ### Docs
 
 - Add `docs/token-saving-plugins.zh.md`: a measured comparison of dsh-rtk,

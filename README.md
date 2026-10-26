@@ -62,7 +62,7 @@ Everything else — workdir, timeout, env, exit code, sandbox confinement — is
 
 - **Node.js:** >= 20.0.0
 - **rtk:** `rtk --version` must exit 0 on PATH (install separately, e.g. `cargo install rtk`)
-- **Minimum rtk for the delegation design:** `0.25.0`, where `rtk rewrite` was introduced; everything in this README is verified against **`rtk 1.0.1`**, and CI re-runs that check on every push. There is no upper bound — see [Versioning note](#versioning-note).
+- **Minimum rtk for the delegation design:** `0.25.0`, where `rtk rewrite` was introduced; everything in this README is verified against **`rtk 1.1.0`**, and CI re-runs that check on every push. There is no upper bound — see [Versioning note](#versioning-note).
 
 ## Why
 
@@ -206,7 +206,7 @@ All other options — `cwd`, `timeoutMs`, `graceMs`, etc. — are inherited unch
 
 ## Which commands are routed
 
-Whatever the installed rtk routes. Run `rtk rewrite "<command>"` to ask it directly, or see the [rtk command reference](https://github.com/rtk-ai/rtk#supported-ecosystems) for the maintained list — the plugin does not mirror it. As a sample of the ground a hand-maintained list used to miss, rtk 1.0.1 already routes `ls`, `tree`, `head`, `read`, `diff`, `wc`, `grep`, `rg`, `ast-grep`, `oc`, `bun`, `bunx`, `lint`, `prettier`, `format` and `ctest` alongside the older dev-tool set.
+Whatever the installed rtk routes. Run `rtk rewrite "<command>"` to ask it directly, or see the [rtk command reference](https://github.com/rtk-ai/rtk#supported-ecosystems) for the maintained list — the plugin does not mirror it. As a sample of the ground a hand-maintained list used to miss, rtk 1.1.0 already routes `ls`, `tree`, `head`, `read`, `diff`, `wc`, `grep`, `rg`, `ast-grep`, `oc`, `bun`, `bunx`, `lint`, `prettier`, `format` and `ctest` alongside the older dev-tool set.
 
 Compound commands are routed too, because rtk rewrites segment by segment — and the filter now looks at every segment, not just the leading word, so `cd repo && cargo test` is not mistaken for a bare `cd`. The plugin skips a command only when all of its segments are words it can prove rtk never rewrites (shell keywords and everyday builtins), which saves a subprocess without losing coverage.
 

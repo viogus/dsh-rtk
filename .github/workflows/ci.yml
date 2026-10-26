@@ -101,7 +101,7 @@ jobs:
       # moved. Bump this deliberately when adopting a newer rtk.
       - name: Download real rtk
         env:
-          RTK_VERSION: "1.0.1"
+          RTK_VERSION: "1.1.0"
         run: |
           set -euo pipefail
           asset="rtk-oss-x86_64-unknown-linux-musl.tar.gz"

@@ -98,7 +98,7 @@ describe('RtkBashExecutor', () => {
   })
 
   it('routes a command that was never on the plugin\'s old whitelist', async () => {
-    // The point of delegating: `tree` is routable by real rtk 1.0.1 and was on
+    // The point of delegating: `tree` is routable by real rtk 1.1.0 and was on
     // no hand-maintained list this plugin ever shipped. The stand-in plays rtk's
     // role, so the seam — not a plugin table — decides.
     const { bash } = await setup()

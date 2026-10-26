@@ -17,14 +17,15 @@
  * declines — which must reach the shell byte-for-byte.
  */
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { applyRtkRewrite, runRtkRewrite } from '../src/rtk.ts'
+import { NON_ROUTABLE_EXACT } from '../src/wrap.ts'
 
 const BIN = process.env['RTK_INTEGRATION_BIN'] ?? ''
 
-/** Commands rtk 1.0.1 rewrites, including several no shipped plugin version listed. */
+/** Commands rtk 1.1.0 rewrites, including several no shipped plugin version listed. */
 const ROUTED = [
   'git status',
   'cargo build',
@@ -78,6 +79,18 @@ describe.skipIf(BIN === '' || !existsSync(BIN))('real rtk feature parity', () =>
   it.each(DECLINED)('leaves %s untouched', (command) => {
     process.env['RTK_BIN'] = BIN
     expect(applyRtkRewrite(command, new Map())).toBe(command)
+  })
+
+  it.each([...NON_ROUTABLE_EXACT])('still declines %s, so the filter cannot hide a rewrite', (word) => {
+    // The cost filter's whole justification is that rtk never rewrites these
+    // words anyway. If a release teaches rtk one of them, the filter would
+    // silently suppress a real rewrite — so assert it against the real binary,
+    // bare and with an argument, instead of trusting the list.
+    for (const command of [word, `${word} sample.txt`]) {
+      // `rtk rewrite` exits 1 when it declines, so spawnSync rather than execFileSync.
+      const out = spawnSync(BIN, ['rewrite', command], { encoding: 'utf8' })
+      expect(out.stdout.trim(), `${word} is filtered but rtk rewrote it`).toBe('')
+    }
   })
 
   it('adopts a rewrite that is not a simple prefix', () => {
