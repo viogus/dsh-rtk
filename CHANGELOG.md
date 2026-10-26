@@ -11,6 +11,8 @@ This repository is a **fork** of
 
 ## [Unreleased]
 
+## [0.2.5] — 2026-10-26
+
 ### Changed
 
 - **rtk 1.1.0.** Re-ran the real-binary suite against it: `rtk rewrite`'s exit
@@ -185,7 +187,8 @@ maintains, it is whatever the installed `rtk` says it is.
 Upstream `DeepTrial/dsh-bash-rtk` history: static 41-executable whitelist in
 `src/wrap.ts`, no `rtk rewrite` delegation, no integration suite.
 
-[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/viogus/dsh-rtk/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/viogus/dsh-rtk/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/viogus/dsh-rtk/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/viogus/dsh-rtk/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/viogus/dsh-rtk/compare/v0.2.1...v0.2.2
